@@ -1,0 +1,8 @@
+*~
+*~~
+.DS_Store
+.*.swp
+hs_err_pid*.log
+*.so
+**/xcuserdata
+/test
