@@ -1,9 +1,5 @@
 ### unsock: shim to automatically change `AF_INET` sockets to `AF_UNIX`, etc.
 
-Copyright 2022 Christian Kohlschuetter <christian@kohlschutter.com>
-
-SPDX-License-Identifier: Apache-2.0
-
 # unsock
 
 Unix domain sockets (`AF_UNIX`) are Berkeley (BSD-style) sockets that are accessible
@@ -110,3 +106,17 @@ to that address is currently not possible.
 `AF_INET`-based sockets have several socket options thay may not be supported by `AF_UNIX`.
 While *unsock* already has several checks for common options, some are still missing. Use
 the *debug* build to add some logging when debugging these cases.
+
+# Changelog
+
+### _(2022-06-06)_ **unsock 1.0.0**
+
+ - Initial release
+
+# Legal Notices
+
+Copyright 2022 Christian Kohlschuetter <christian@kohlschutter.com>
+
+SPDX-License-Identifier: Apache-2.0
+See NOTICE and LICENSE for license details.
+
