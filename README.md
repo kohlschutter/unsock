@@ -1,5 +1,7 @@
 ### unsock: shim to automatically change `AF_INET` sockets to `AF_UNIX`, etc.
 
+[![Makefile CI](https://github.com/kohlschutter/unsock/actions/workflows/makefile.yml/badge.svg?branch=main)](https://github.com/kohlschutter/unsock/actions/workflows/makefile.yml)
+
 # unsock
 
 Unix domain sockets (`AF_UNIX`) are Berkeley (BSD-style) sockets that are accessible
