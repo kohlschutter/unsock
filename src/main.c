@@ -10,7 +10,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int unsock_main(void) {
+#define xstr(s) str(s)
+#define str(s) #s
+
+// something like "/lib/ld-musl-x86_64.so.1";
+const char my_interp[] __attribute__((section(".interp"))) = xstr(INTERP);
+
+int unsock_main() {
 fprintf(stderr,
 "unsock: shim to automatically change AF_INET sockets to AF_UNIX, etc.\n"
 "\n"

@@ -20,26 +20,34 @@ LIBUNSOCK = libunsock$(LIBUNSOCK_SUFFIX)
 
 CFLAGS = -std=c17 -Wall -Wextra -Os $(DEBUG_CFLAGS) $(EXTRA_CFLAGS)
 
-all: $(LIBUNSOCK)
+all: $(LIBUNSOCK) clean-postbuild
 
-$(LIBUNSOCK): src/unsock.c src/main.c
+test-ld:
+	$(CC) -o test-ld -shared /dev/null
+
+clean-postbuild:
+	@rm -f test-ld
+
+$(LIBUNSOCK): INTERP = `ldd test-ld | grep ".so" | grep -v " => " | tail -n 1 | cut -d'(' -f1|tr -d '\t '`
+$(LIBUNSOCK): test-ld src/unsock.c src/main.c
 	$(CC) $(CFLAGS) -D_GNU_SOURCE -fvisibility=hidden \
-		-nostartfiles -fPIC -pie -Wl,--entry,unsock_main \
+		-DINTERP=$(INTERP) \
+		-shared -fPIC -e unsock_main \
 		-o $(LIBUNSOCK) \
 		src/unsock.c src/main.c \
 		-ldl
 
 test: test_prepare test_nc test_bind0
-	echo "Tests PASS."
+	@echo "Tests PASS."
 
-test_prepare: $(LIBUNSOCK)
+test_prepare: $(LIBUNSOCK) clean-postbuild
 
 test_nc: test_prepare
 	# Test unsock with "nc", pretending to listen on TCP port 7000 (which will turn into UNIX domain socket test/7000.sock)
 	mkdir -p test
 	rm -f "test/7000.sock" "test/7000.txt"
 	UNSOCK_DIR="$(PWD)/test" LD_PRELOAD=./$(LIBUNSOCK) nc -l localhost 7000 | head -n 1 > test/7000.txt &
-	until [[ -e "test/7000.sock" ]]; do sleep 0.1; done
+	until [ -e "test/7000.sock" ]; do sleep 0.1; done
 	echo "Hello world" | nc -U test/7000.sock
 	cat test/7000.txt | grep -q "Hello world"
 
@@ -47,8 +55,8 @@ test_bind0: test_prepare
 	# Test binding on port 0 (random/anonymous port)
 	rm -rf test/zero
 	mkdir -p test/zero
-	( UNSOCK_DIR="/home/ck/fc/unsock/test/zero" LD_PRELOAD=./$(LIBUNSOCK) timeout 1 nc -l localhost 0 ) || true
-	[[ `ls test/zero/*sock | grep -c -v "/0.sock"` -eq 1 ]]
+	( UNSOCK_DIR="$(PWD)/test/zero" LD_PRELOAD=./$(LIBUNSOCK) timeout 1 nc -l localhost 0 ) || true
+	[ `ls test/zero/*sock | grep -c ".sock"` -eq 1 ]
 
 .PHONY: test_prepare
 
