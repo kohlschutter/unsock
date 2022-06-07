@@ -24,7 +24,7 @@
     using another process, e.g., as follows:
 
     ```
-    ( while [ 1 ]; do socat UNIX-LISTEN:/tmp/unsockets/5900.sock TCP-CONNECT:localhost:5900; done ) &
+    socat UNIX-LISTEN:/tmp/unsockets/5900.sock,fork TCP-CONNECT:localhost:5900
     ```
     
     Alternatively, consider launching the original VNC server as a UNIX socket at
