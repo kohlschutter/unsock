@@ -309,7 +309,8 @@ static int bindRandomPort(int sockfd, struct sockaddr_in *addr, socklen_t addrle
     int portBase = (rand_r(&seed) % 65536);
     int port = 0;
 
-    char path[SUN_PATH_LEN];
+    char path[SUN_PATH_LEN + 1];
+    memset(path, 0, SUN_PATH_LEN + 1);
     const int offset = strlen(addrTemplate.sun_path);
     strncpy(path, (char*)&addrTemplate.sun_path, SUN_PATH_LEN);
 
