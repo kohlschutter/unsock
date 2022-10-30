@@ -18,6 +18,7 @@
 #include <netinet/tcp.h>
 #include <errno.h>
 #include <string.h>
+#include <fcntl.h>
 
 #define UNSOCK_WRAP_SYM(sym) unsock_ ## sym = resolveSymbol( #sym )
 static void* resolveSymbol(char *symbol) {
@@ -88,21 +89,11 @@ int CK_VISIBILITY_DEFAULT socket(int domain, int type, int protocol) {
         errno = EAFNOSUPPORT;
         return -1;
     }
+
     switch(domain) {
         case AF_INET6:
             errno = EACCES; // deny acccess (not yet implemented)
             return -1;
-        case AF_INET:
-            domain = AF_UNIX; // this is why we're here
-            switch(protocol) {
-                case IPPROTO_TCP:
-                case IPPROTO_UDP:
-                case IPPROTO_SCTP:
-                case IPPROTO_UDPLITE:
-                    protocol = 0;
-                    break;
-            }
-            break;
         case AF_UNIX: // fall-through
         default:
             // keep as-is
@@ -112,6 +103,9 @@ int CK_VISIBILITY_DEFAULT socket(int domain, int type, int protocol) {
 }
 
 static _Bool isUnsockAddress(const struct sockaddr_un* addr_un) {
+    if(addr_un->sun_family != AF_UNIX) {
+        return false;
+    }
     if(strncmp(addrTemplate.sun_path, addr_un->sun_path, strlen(addrTemplate.sun_path)) == 0) {
         // a socket in our directory -- good enough to delete upon shutdown
         // FIXME check filename
@@ -130,9 +124,127 @@ static _Bool isUnsockFd(int sockfd, struct sockaddr_un *addr, socklen_t *len) {
     }
 }
 
+static int fixSockfd(int sockfd) {
+    int ret;
+
+    int domain = 0;
+    socklen_t len;
+
+    len = sizeof(domain);
+    ret = unsock_getsockopt(sockfd, SOL_SOCKET, SO_DOMAIN, &domain, &len);
+    if(ret != 0) return -1;
+
+    switch(domain) {
+        case AF_UNIX:
+            // nothing to fix
+            return 0;
+        case AF_INET:
+            // see below;
+            break;
+        default:
+            // don't fix
+            return 0;
+    }
+
+    int type = 0;
+    len = sizeof(type);
+    ret = getsockopt(sockfd, SOL_SOCKET, SO_TYPE, &type, &len);
+    if(ret != 0) return -1;
+
+    int protocol = 0;
+    len = sizeof(protocol);
+    ret = getsockopt(sockfd, SOL_SOCKET, SO_PROTOCOL, &protocol, &len);
+    if(ret != 0) return -1;
+
+    int options = (protocol & (SOCK_NONBLOCK | SOCK_CLOEXEC));
+
+    switch(protocol) {
+        case IPPROTO_UDP:
+        case IPPROTO_TCP:
+        case IPPROTO_SCTP:
+        case IPPROTO_UDPLITE:
+            protocol = 0;
+            break;
+    }
+
+    int rcvtimeo = 0;
+    len = sizeof(rcvtimeo);
+    ret = getsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, &rcvtimeo, &len);
+    if(ret != 0) return -1;
+    int sndtimeo = 0;
+    len = sizeof(sndtimeo);
+    ret = getsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &sndtimeo, &len);
+    if(ret != 0) return -1;
+    int peekoff = 0;
+    len = sizeof(peekoff);
+    ret = getsockopt(sockfd, SOL_SOCKET, SO_PEEK_OFF, &peekoff, &len);
+    if(ret != 0) peekoff = -1;
+
+    int oldfd = socket(AF_UNIX, type, protocol | options);
+    if(oldfd < 0) {
+        return -1;
+    }
+
+    setsockopt(oldfd, SOL_SOCKET, SO_RCVTIMEO, &rcvtimeo, sizeof(rcvtimeo));
+    setsockopt(oldfd, SOL_SOCKET, SO_RCVTIMEO, &sndtimeo, sizeof(sndtimeo));
+    if(peekoff > 0) {
+        setsockopt(oldfd, SOL_SOCKET, SO_PEEK_OFF, &peekoff, sizeof(peekoff));
+    }
+
+    ret = dup3(oldfd, sockfd, options & O_CLOEXEC);
+    if(ret < 0) {
+        return -1;
+    }
+
+    if(ret != sockfd) {
+        close(sockfd);
+        close(ret);
+        errno = ENETDOWN;
+        return -1;
+    }
+
+    return 0;
+}
+
+static int checkFixAddr(const struct sockaddr *addr, socklen_t addrlen) {
+    if(addr->sa_family == AF_INET) {
+        if(addrlen != sizeof(struct sockaddr_in)) {
+#if DEBUG
+            fprintf(stderr, "unexpected addrlen %i vs %li\n", addrlen, sizeof(struct sockaddr_in));
+#endif
+            return 1;
+        }
+        struct sockaddr_in *inAddr = (struct sockaddr_in *)addr;
+
+        uint32_t addrNative = ntohl(inAddr->sin_addr.s_addr);
+#if DEBUG
+        fprintf(stderr ,"port %i addr %p\n", inAddr->sin_port, addrNative);
+        fflush(stderr);
+#endif
+
+        if((addrNative & 0xFF000000) == 0x7f000000) {
+            // loopback
+            return 0;
+        }
+        switch(addrNative) {
+            case INADDR_LOOPBACK:
+            case INADDR_ANY:
+            case INADDR_BROADCAST:
+                return 0;
+            default:
+                return 1;
+        }
+    }
+    return 1;
+}
+
 static int fixAddr(int sockfd, const struct sockaddr *addr, socklen_t addrlen,
                    int (*fun)(int, const struct sockaddr *, socklen_t)) {
-    if(addr->sa_family == AF_INET) {
+    if(addr->sa_family == AF_INET && checkFixAddr(addr, addrlen) == 0) {
+        if(fixSockfd(sockfd) != 0) {
+            return -1;
+        }
+
         struct sockaddr_in *inAddr = (struct sockaddr_in *)addr;
         struct sockaddr_un unAddr = {
             .sun_family = AF_UNIX
@@ -363,9 +475,20 @@ int CK_VISIBILITY_DEFAULT bind(int sockfd, const struct sockaddr *addr, socklen_
         return -1;
     }
     struct sockaddr_in *inAddr = (struct sockaddr_in *)addr;
+    if(addr->sa_family == AF_INET6) {
+        ((struct sockaddr *)addr)->sa_family = AF_INET;
+    }
+
     if(addr->sa_family == AF_INET
        && addrlen >= sizeof(struct sockaddr_in) && inAddr->sin_port == 0) {
-        return bindRandomPort(sockfd, inAddr, addrlen);
+
+        int ret = fixSockfd(sockfd);
+        if(ret < 0) {
+            return -1;
+        }
+
+        ret = bindRandomPort(sockfd, inAddr, addrlen);
+        return ret;
     } else {
         return fixAddr(sockfd, addr, addrlen, better_bind);
     }
