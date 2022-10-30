@@ -13,18 +13,18 @@
 		437CD105283FD8AA00AEFAD8 /* NOTICE */ = {isa = PBXFileReference; lastKnownFileType = text; path = NOTICE; sourceTree = "<group>"; };
 		437CD106283FD8AA00AEFAD8 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		437CD107283FD8AA00AEFAD8 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
-		437CD108283FD8AA00AEFAD8 /* COPYING */ = {isa = PBXFileReference; lastKnownFileType = text; path = COPYING; sourceTree = "<group>"; };
 		437CD10A284146D100AEFAD8 /* novnc.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = novnc.md; sourceTree = "<group>"; };
+		43FD6BD6290EE4620056914B /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
 		437CD0F6283FD54300AEFAD8 = {
 			isa = PBXGroup;
 			children = (
+				43FD6BD6290EE4620056914B /* LICENSE */,
 				437CD105283FD8AA00AEFAD8 /* NOTICE */,
 				437CD106283FD8AA00AEFAD8 /* README.md */,
 				437CD109284146D100AEFAD8 /* doc */,
-				437CD108283FD8AA00AEFAD8 /* COPYING */,
 				437CD107283FD8AA00AEFAD8 /* Makefile */,
 				437CD101283FD56C00AEFAD8 /* src */,
 			);
