@@ -799,7 +799,7 @@ int CK_VISIBILITY_DEFAULT getsockopt(int sockfd, int level, int optname,
         return ret;
     }
 
-    if(ret == -1 && errno == EOPNOTSUPP) {
+    if(ret == -1) {
         // not supported on UNIX sockets
         // FIXME handle other options
         switch(level) {
@@ -865,7 +865,7 @@ int CK_VISIBILITY_DEFAULT setsockopt(int sockfd, int level, int optname,
         return ret;
     }
 
-    if(ret == -1 && errno == EOPNOTSUPP) {
+    if(ret == -1) {
         // not supported on UNIX sockets
         // FIXME handle other options
         switch(level) {
