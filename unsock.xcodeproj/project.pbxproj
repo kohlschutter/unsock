@@ -15,6 +15,7 @@
 		437CD107283FD8AA00AEFAD8 /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; path = Makefile; sourceTree = "<group>"; };
 		437CD10A284146D100AEFAD8 /* novnc.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = novnc.md; sourceTree = "<group>"; };
 		43FD6BD6290EE4620056914B /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
+		43FD6BD7290FCF010056914B /* unsock.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = unsock.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -36,6 +37,7 @@
 				437CD102283FD56C00AEFAD8 /* ckmacros.h */,
 				437CD104283FD56C00AEFAD8 /* main.c */,
 				437CD103283FD56C00AEFAD8 /* unsock.c */,
+				43FD6BD7290FCF010056914B /* unsock.h */,
 			);
 			path = src;
 			sourceTree = "<group>";
