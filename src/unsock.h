@@ -48,6 +48,7 @@ struct __attribute__((packed, aligned(4))) unsock_socket_info {
         struct sockaddr addr;
         struct sockaddr_un un;
         struct sockaddr_vm vsock;
+        struct sockaddr_tipc tipc;
         char bytes[128];
     } dest;
 
@@ -55,5 +56,7 @@ struct __attribute__((packed, aligned(4))) unsock_socket_info {
 
     uint32_t reserved1;
 };
+
+CK_VISIBILITY_INTERNAL char* getenv_unsock(char *key);
 
 #endif /* unsock_h */

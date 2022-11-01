@@ -56,14 +56,37 @@ static _Thread_local unsigned int seed;
 static bool accept_convert_all = false;
 static bool accept_convert_vsock = false;
 
+static in_addr_t covered_addr = 0x7faf0000;
+static int covered_bitmask = 32;
+
 static bool checkEnvBool(char *key) {
     char *val = getenv(key);
     return (val && val[0] == '1' && val[1] == 0);
 }
 
+CK_VISIBILITY_INTERNAL char* getenv_unsock(char *key) {
+    char *val = getenv(key);
+    if(val && val[0] != 0) {
+        return val;
+    } else {
+        return NULL;
+    }
+}
+
+static bool is_addr_covered(in_addr_t addr) {
+    if(covered_bitmask == 0) {
+        return true;
+    } else if (covered_bitmask == 32) {
+        return addr == covered_addr;
+    } else {
+        in_addr_t mask = ~((((in_addr_t)1 << (32-covered_bitmask))-1));
+        return (addr & mask) == (covered_addr & mask);
+    }
+}
+
 static void __attribute__((constructor)) unsock_init(void) {
-    char *sockDir = getenv("UNSOCK_DIR");
-    if(!sockDir || sockDir[0] == '\0') {
+    char *sockDir = getenv_unsock("UNSOCK_DIR");
+    if(!sockDir) {
         fprintf(stderr, "unsock: (fatal error) UNSOCK_DIR not set\n");
         exit(1);
     }
@@ -94,6 +117,29 @@ static void __attribute__((constructor)) unsock_init(void) {
     UNSOCK_WRAP_SYM(shutdown);
 
     seed = (int)(long)(&unsock_init);
+
+    char *coveredAddrStr = getenv_unsock("UNSOCK_ADDR");
+    if(coveredAddrStr) {
+        union {
+            in_addr_t addr;
+            char bytes[4];
+        } ipaddr = {0};
+
+        char bitmask = 32;
+        int parts;
+        if((parts = sscanf(coveredAddrStr, "%hhd.%hhd.%hhd.%hhd/%hhd",
+                  &ipaddr.bytes[0], &ipaddr.bytes[1], &ipaddr.bytes[2], &ipaddr.bytes[3], &bitmask)) >= 4
+           && (parts == 4 || (bitmask >= 0 && bitmask <= 32))) {
+            covered_addr = ntohl(ipaddr.addr);
+            if(parts == 5) {
+                covered_bitmask = bitmask;
+            } else {
+                covered_bitmask = 32;
+            }
+        } else {
+            fprintf(stderr, "unsock: Cannot parse UNSOCK_ADDR: %s\n", coveredAddrStr);
+        }
+    }
 
     accept_convert_all = checkEnvBool("UNSOCK_ACCEPT_CONVERT_ALL");
     accept_convert_vsock = checkEnvBool("UNSOCK_ACCEPT_CONVERT_VSOCK");
@@ -135,13 +181,13 @@ static void set_unsock_param(int fd, unsock_param_t *param) {
         return;
     }
 
-    // FIXME implement more overrideable socket options
     switch(param->group) {
         case SOL_SOCKET:
             switch(param->key) {
                 case SO_RCVTIMEO:
                 case SO_SNDTIMEO:
-                    setsockopt(fd, param->group, param->key, &param->value.timeval, sizeof(struct timeval));
+                    setsockopt(fd, param->group, param->key,
+                               &param->value.timeval, sizeof(struct timeval));
 
                     return;
             }
@@ -149,7 +195,8 @@ static void set_unsock_param(int fd, unsock_param_t *param) {
         case SOL_TIPC:
             switch(param->key) {
                 case TIPC_GROUP_JOIN:
-                    setsockopt(fd, param->group, param->key, &param->value.tipc_group_req, sizeof(struct tipc_group_req));
+                    setsockopt(fd, param->group, param->key,
+                               &param->value.tipc_group_req, sizeof(struct tipc_group_req));
                     return;
             }
             break;
@@ -196,15 +243,15 @@ static int fixSockfd(int sockfd, sa_family_t desiredDomain, struct unsock_socket
 
     int options = (protocol & (SOCK_NONBLOCK | SOCK_CLOEXEC));
 
-    switch(protocol) {
-        case IPPROTO_UDP:
-        case IPPROTO_TCP:
-        case IPPROTO_SCTP:
-        case IPPROTO_UDPLITE:
-            if(desiredDomain != AF_INET) {
+    if(desiredDomain != AF_INET) {
+        switch(protocol) {
+            case IPPROTO_UDP:
+            case IPPROTO_TCP:
+            case IPPROTO_SCTP:
+            case IPPROTO_UDPLITE:
                 protocol = 0;
-            }
-            break;
+                break;
+        }
     }
 
     struct timeval rcvtimeo = {0};
@@ -215,10 +262,6 @@ static int fixSockfd(int sockfd, sa_family_t desiredDomain, struct unsock_socket
     len = sizeof(sndtimeo);
     ret = getsockopt(sockfd, SOL_SOCKET, SO_SNDTIMEO, &sndtimeo, &len);
     if(ret != 0) return -1;
-    int peekoff = 0;
-    len = sizeof(peekoff);
-    ret = getsockopt(sockfd, SOL_SOCKET, SO_PEEK_OFF, &peekoff, &len);
-    if(ret != 0) peekoff = -1;
 
     int oldfd = socket(desiredDomain, type, protocol | options);
     if(oldfd < 0) {
@@ -227,9 +270,6 @@ static int fixSockfd(int sockfd, sa_family_t desiredDomain, struct unsock_socket
 
     setsockopt(oldfd, SOL_SOCKET, SO_RCVTIMEO, &rcvtimeo, sizeof(rcvtimeo));
     setsockopt(oldfd, SOL_SOCKET, SO_SNDTIMEO, &sndtimeo, sizeof(sndtimeo));
-    if(peekoff > 0) {
-        setsockopt(oldfd, SOL_SOCKET, SO_PEEK_OFF, &peekoff, sizeof(peekoff));
-    }
 
     if(si != NULL) {
         for(int i=0;i<4;i++) {
@@ -271,18 +311,7 @@ static int checkFixAddr(const struct sockaddr *addr, socklen_t addrlen) {
         fflush(stderr);
 #endif
 
-        if((addrNative & 0xFF000000) == 0x7f000000) {
-            // loopback
-            return 0;
-        }
-        switch(addrNative) {
-            case INADDR_LOOPBACK:
-            case INADDR_ANY:
-            case INADDR_BROADCAST:
-                return 0;
-            default:
-                return 1;
-        }
+        return is_addr_covered(addrNative) ? 0 : 1;
     }
     return 1;
 }
@@ -362,6 +391,8 @@ static int unfixAddr(int sockfd, struct sockaddr * addr,
         memset(buf,0, sizeof(struct sockaddr_in));
         *addrlen = sizeof(struct sockaddr_in);
         buf->sa_family = AF_INET;
+        ((struct sockaddr_in *)buf)->sin_addr.s_addr = htonl(covered_addr);
+
         goto end;
     }
 
@@ -442,7 +473,7 @@ after_loop:
     struct sockaddr_in *inAddr = (struct sockaddr_in *)buf;
     inAddr->sin_family = AF_INET;
     inAddr->sin_port = htons(port);
-    inAddr->sin_addr.s_addr = INADDR_LOOPBACK;
+    inAddr->sin_addr.s_addr = htonl(covered_addr);
 
 end:
     if(ret >= 0 && buf == tmpBuf) {
@@ -538,7 +569,8 @@ static int bindRandomPort(int sockfd, struct sockaddr_in *addr, socklen_t addrle
     return -1;
 }
 
-static struct unsock_socket_info* load_unsock_socket_info(const struct sockaddr *addr, socklen_t addrlen) {
+static struct unsock_socket_info* load_unsock_socket_info(const struct sockaddr *addr,
+                                                          socklen_t addrlen) {
     if(addr == NULL || addrlen < sizeof(struct sockaddr_un) || addr->sa_family != AF_UNIX) {
         return NULL;
     }
@@ -577,7 +609,8 @@ static struct unsock_socket_info* load_unsock_socket_info(const struct sockaddr 
     struct unsock_socket_info *si = malloc(sizeof(struct unsock_socket_info));
 
     ssize_t r = read(fd, si, sizeof(struct unsock_socket_info));
-    if(r == -1 || r != sizeof(struct unsock_socket_info) || si->magicHeader != UNSOCK_SOCKET_INFO_MAGIC) {
+    if(r == -1 || r != sizeof(struct unsock_socket_info) ||
+       si->magicHeader != UNSOCK_SOCKET_INFO_MAGIC) {
         free(si);
         return NULL;
     } else {
@@ -612,7 +645,7 @@ static int proxy_bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen
     }
 }
 
-int CK_VISIBILITY_DEFAULT bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
+CK_VISIBILITY_DEFAULT int bind(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
     if(unsock_bind == NULL) {
         errno = EADDRNOTAVAIL;
         return -1;
@@ -634,7 +667,8 @@ int CK_VISIBILITY_DEFAULT bind(int sockfd, const struct sockaddr *addr, socklen_
     }
 }
 
-static int firecracker_proxy_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen, uint32_t svmPort) {
+static int firecracker_proxy_connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen,
+                                     uint32_t svmPort) {
     int ret = unsock_connect(sockfd, addr, addrlen);
     if(ret < 0) {
         return ret;
@@ -724,7 +758,7 @@ static int proxy_connect(int sockfd, const struct sockaddr *addr, socklen_t addr
     }
 }
 
-int CK_VISIBILITY_DEFAULT connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
+CK_VISIBILITY_DEFAULT int connect(int sockfd, const struct sockaddr *addr, socklen_t addrlen) {
     if(unsock_connect == NULL) {
         errno = EADDRNOTAVAIL;
         return -1;
@@ -732,7 +766,7 @@ int CK_VISIBILITY_DEFAULT connect(int sockfd, const struct sockaddr *addr, sockl
     return fixAddr(sockfd, addr, addrlen, proxy_connect);
 }
 
-int CK_VISIBILITY_DEFAULT listen(int a, int b) {
+CK_VISIBILITY_DEFAULT int listen(int a, int b) {
     if(unsock_listen == NULL) {
         errno = EOPNOTSUPP;
         return -1;
@@ -740,7 +774,7 @@ int CK_VISIBILITY_DEFAULT listen(int a, int b) {
     return unsock_listen(a,b);
 }
 
-int CK_VISIBILITY_DEFAULT accept(int sockfd, struct sockaddr * addr,
+CK_VISIBILITY_DEFAULT int accept(int sockfd, struct sockaddr * addr,
                                  socklen_t * addrlen) {
     if(unsock_accept == NULL) {
         errno = EPROTO;
@@ -752,7 +786,7 @@ int CK_VISIBILITY_DEFAULT accept(int sockfd, struct sockaddr * addr,
     CK_IGNORE_CAST_END
 }
 
-int CK_VISIBILITY_DEFAULT accept4(int sockfd, struct sockaddr * addr,
+CK_VISIBILITY_DEFAULT int accept4(int sockfd, struct sockaddr * addr,
                                   socklen_t * addrlen, int flags) {
     if(unsock_accept4 == NULL) {
         if(flags == 0) {
@@ -764,7 +798,7 @@ int CK_VISIBILITY_DEFAULT accept4(int sockfd, struct sockaddr * addr,
     return unfixAddr(sockfd, addr, addrlen, flags, unsock_accept4);
 }
 
-int CK_VISIBILITY_DEFAULT getsockname(int sockfd, struct sockaddr * addr,
+CK_VISIBILITY_DEFAULT int getsockname(int sockfd, struct sockaddr * addr,
                                       socklen_t * addrlen) {
     if(unsock_getsockname == NULL) {
         errno = ENOBUFS;
@@ -776,7 +810,7 @@ int CK_VISIBILITY_DEFAULT getsockname(int sockfd, struct sockaddr * addr,
     CK_IGNORE_CAST_END
 }
 
-int CK_VISIBILITY_DEFAULT getpeername(int sockfd, struct sockaddr * addr,
+CK_VISIBILITY_DEFAULT int getpeername(int sockfd, struct sockaddr * addr,
                                       socklen_t * addrlen) {
     if(unsock_getpeername == NULL) {
         errno = ENOBUFS;
@@ -788,7 +822,7 @@ int CK_VISIBILITY_DEFAULT getpeername(int sockfd, struct sockaddr * addr,
     CK_IGNORE_CAST_END
 }
 
-int CK_VISIBILITY_DEFAULT getsockopt(int sockfd, int level, int optname,
+CK_VISIBILITY_DEFAULT int getsockopt(int sockfd, int level, int optname,
                                      void * optval, socklen_t * optlen) {
     if(unsock_getsockopt == NULL) {
         errno = EINVAL;
@@ -854,7 +888,7 @@ int CK_VISIBILITY_DEFAULT getsockopt(int sockfd, int level, int optname,
     return ret;
 }
 
-int CK_VISIBILITY_DEFAULT setsockopt(int sockfd, int level, int optname,
+CK_VISIBILITY_DEFAULT int setsockopt(int sockfd, int level, int optname,
                                      const void *optval, socklen_t optlen) {
     if(unsock_setsockopt == NULL) {
         errno = EINVAL;
@@ -889,13 +923,14 @@ int CK_VISIBILITY_DEFAULT setsockopt(int sockfd, int level, int optname,
 
 #if DEBUG
     if(ret != 0) {
-        fprintf(stderr, "unsock: setsockopt level:%i opt:%i val:%i: err:%i\n", level, optname, *((int*)optval), errno);
+        fprintf(stderr, "unsock: setsockopt level:%i opt:%i val:%i: err:%i\n",
+                level, optname, *((int*)optval), errno);
     }
 #endif
     return ret;
 }
 
-ssize_t CK_VISIBILITY_DEFAULT recvfrom(int sockfd, void * buf, size_t len, int flags,
+CK_VISIBILITY_DEFAULT ssize_t recvfrom(int sockfd, void * buf, size_t len, int flags,
                                        struct sockaddr * src_addr,
                                        socklen_t * addrlen) {
     if(unsock_recvfrom == NULL) {
@@ -937,7 +972,7 @@ ssize_t CK_VISIBILITY_DEFAULT recvfrom(int sockfd, void * buf, size_t len, int f
     return ret;
 }
 
-ssize_t CK_VISIBILITY_DEFAULT sendto(int sockfd, const void *buf, size_t len, int flags,
+CK_VISIBILITY_DEFAULT ssize_t sendto(int sockfd, const void *buf, size_t len, int flags,
                                      const struct sockaddr *dest_addr, socklen_t addrlen) {
     if(unsock_sendto == NULL) {
         errno = EAFNOSUPPORT;
@@ -958,7 +993,7 @@ ssize_t CK_VISIBILITY_DEFAULT sendto(int sockfd, const void *buf, size_t len, in
     return unsock_sendto(sockfd, buf, len, flags, (struct sockaddr*)&dest, sizeof(dest));
 }
 
-int CK_VISIBILITY_DEFAULT shutdown(int sockfd, int how) {
+CK_VISIBILITY_DEFAULT int shutdown(int sockfd, int how) {
     if(unsock_shutdown == NULL) {
         errno = EINVAL;
         return -1;

@@ -100,9 +100,9 @@ static int createVsockFile(char *sockFile, int vsockPort) {
 }
 
 int unsock_main() {
-    char *sockFile = getenv("UNSOCK_FILE");
-    char *targetFile = getenv("UNSOCK_FC_SOCK");
-    char *vsockPortStr = getenv("UNSOCK_VSOCK_PORT");
+    char *sockFile = getenv_unsock("UNSOCK_FILE");
+    char *targetFile = getenv_unsock("UNSOCK_FC_SOCK");
+    char *vsockPortStr = getenv_unsock("UNSOCK_VSOCK_PORT");
     int vsockPort = vsockPortStr ? strtol(vsockPortStr, NULL, 10) : 0;
     if(sockFile && targetFile && vsockPort) {
         int ret = createProxyFile(sockFile, targetFile, vsockPort);
