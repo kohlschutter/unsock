@@ -202,7 +202,7 @@ Currently, only little-endian architectures are tested/supported.
 
  - Add support for non-`AF_UNIX` connections (via control files posing as unix domain socket files)
  - Add support for Firecracker-style `CONNECT` proxies for `AF_VSOCK` communication.
- - Add very basic tooling to create the corresponding control files
+ - Add very basic tooling to create the corresponding control files for `VSOCK` and `TIPC` sockets
  - Allow unintercepted `AF_INET`/`AF_INET6` traffic; by default, only `127.175.0.0` is intercepted.
  - Add `UNSOCK_ADDR` environment variable to configure which IP address/address range is intercepted.
 
