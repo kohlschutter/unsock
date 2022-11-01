@@ -100,19 +100,58 @@ static int createVsockFile(char *sockFile, int vsockPort, int vsockCid) {
     return writeFile(sockFile, &si);
 }
 
+static int createTipcFile(char *sockFile, char addrtype, char scope, uint32_t type, uint32_t lower, uint32_t upper) {
+    fprintf(stderr, "UNSOCK_TIPC_ADDRTYPE: %i\n", (int)addrtype);
+    fprintf(stderr, "UNSOCK_TIPC_SCOPE: %i\n", (int)scope);
+    fprintf(stderr, "UNSOCK_TIPC_TYPE: %i\n", type);
+    fprintf(stderr, "UNSOCK_TIPC_LOWER: %i\n", lower);
+    fprintf(stderr, "UNSOCK_TIPC_UPPER: %i\n", upper);
+
+    struct unsock_socket_info si = {0};
+    si.magicHeader = UNSOCK_SOCKET_INFO_MAGIC;
+    si.options = 0;
+    si.proxyLen = 0;
+    si.destLen = sizeof(struct sockaddr_tipc);
+
+    si.dest.tipc.family = AF_TIPC;
+    si.dest.tipc.addrtype = addrtype;
+    si.dest.tipc.scope = scope;
+    si.dest.tipc.addr.nameseq.type = type;
+    si.dest.tipc.addr.nameseq.lower = lower;
+    si.dest.tipc.addr.nameseq.upper = upper;
+
+    return writeFile(sockFile, &si);
+}
+
+
 int unsock_main() {
     char *sockFile = getenv_unsock("UNSOCK_FILE");
-    char *targetFile = getenv_unsock("UNSOCK_FC_SOCK");
-    char *vsockPortStr = getenv_unsock("UNSOCK_VSOCK_PORT");
-    char *vsockCidStr = getenv_unsock("UNSOCK_VSOCK_CID");
-    int vsockPort = vsockPortStr ? strtol(vsockPortStr, NULL, 10) : 0;
-    int vsockCid = vsockCidStr ? strtol(vsockCidStr, NULL, 10) : VMADDR_CID_ANY;
-    if(sockFile && targetFile && vsockPort) {
-        int ret = createProxyFile(sockFile, targetFile, vsockPort);
-        exit(-ret);
-    } else if(sockFile && vsockPort) {
-        int ret = createVsockFile(sockFile, vsockPort, vsockCid);
-        exit(-ret);
+    if(sockFile) {
+        char *targetFile = getenv_unsock("UNSOCK_FC_SOCK");
+        char *vsockPortStr = getenv_unsock("UNSOCK_VSOCK_PORT");
+        char *vsockCidStr = getenv_unsock("UNSOCK_VSOCK_CID");
+
+        char *tipcAddrTypeStr = getenv_unsock("UNSOCK_TIPC_ADDRTYPE");
+        char *tipcScopeStr = getenv_unsock("UNSOCK_TIPC_SCOPE");
+        char *tipcTypeStr = getenv_unsock("UNSOCK_TIPC_TYPE");
+        char *tipcLowerStr = getenv_unsock("UNSOCK_TIPC_LOWER");
+        char *tipcUpperStr = getenv_unsock("UNSOCK_TIPC_UPPER");
+
+        int vsockPort = vsockPortStr ? strtol(vsockPortStr, NULL, 10) : 0;
+        int vsockCid = vsockCidStr ? strtol(vsockCidStr, NULL, 10) : VMADDR_CID_ANY;
+        if(targetFile && vsockPort) {
+            exit(-createProxyFile(sockFile, targetFile, vsockPort));
+        } else if(vsockPort) {
+            exit(-createVsockFile(sockFile, vsockPort, vsockCid));
+        } else if(tipcAddrTypeStr && tipcScopeStr && tipcTypeStr && tipcLowerStr && tipcUpperStr) {
+            char addrtype = (char)strtol(tipcAddrTypeStr, NULL, 10);
+            char scope = (char)(strtol(tipcScopeStr, NULL, 10));
+            uint32_t type = strtol(tipcTypeStr, NULL, 10);
+            uint32_t lower = strtol(tipcLowerStr, NULL, 10);
+            uint32_t upper = strtol(tipcUpperStr, NULL, 10);
+
+            exit(-createTipcFile(sockFile, addrtype, scope, type, lower, upper));
+        }
     }
 fprintf(stderr, "%s\n",
 "unsock: shim to automatically change AF_INET sockets to AF_UNIX, etc.\n"
