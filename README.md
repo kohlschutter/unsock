@@ -28,13 +28,32 @@ where unsock's `AF_UNIX` sockets are stored, for example as follows:
 
 	UNSOCK_DIR=/tmp/unsockets/ LD_PRELOAD=./libunsock.so *some-process* *(some-args ...)*
 
+This will ensure that all connections to `127.175.0.0` are intercepted and routed to unix domain
+sockets in `/tmp/unsockets`. The socket files are named `(port).socket`, e.g., `1234.socket` for
+port 1234.
+
+Use `UNSOCK_ADDR` to configure which IP addresses are redirected. You can either specify a single
+IP-address (e.g., 1.2.3.4), or an IP-range identified by a bitmask (e.g., 1.2.3.4/24). Specifying
+a bitmask of 32 is identical to omitting the bitmask. Specifying a bitmask of 0 means "all" IPv4
+addresses, whereas the IP address itself is used to flag incoming connections from other protocols:
+
+	UNSOCK_ADDR=127.0.0.1/8 UNSOCK_DIR=/tmp/unsockets/ LD_PRELOAD=./libunsock.so *some-process* *(some-args ...)*
+
 # Examples
 
 ## nc
 
 Make `nc` listen on Unix domain socket /tmp/unsockets/7000.sock instead of using TCP port 7000:
 
-    UNSOCK_DIR=/tmp/unsockets/ LD_PRELOAD=./libunsock.so nc -l localhost 7000
+    UNSOCK_DIR=/tmp/unsockets/ LD_PRELOAD=./libunsock.so nc -l 127.175.0.0 7000
+
+Listen on all IPv4 addresses; connections are coming from `127.175.0.3`:
+
+    UNSOCK_ADDR=127.175.0.3/0 UNSOCK_DIR=/tmp/unsockets/ LD_PRELOAD=./libunsock.so nc 127.0.0.1 7000
+
+Listen on all IP addresses between 127.1.0.0 and 127.1.0.255; connection to 127.0.0.1 is via TCP:
+
+    UNSOCK_ADDR=127.1.0.3/24 UNSOCK_DIR=/tmp/unsockets/ LD_PRELOAD=./libunsock.so nc 127.0.0.1 7000
 
 ## java
 
@@ -42,7 +61,7 @@ Make Java connect to UNIX sockets even without special support. Obviously, this 
 for proper libraries like [junixsocket](https://github.com/kohlschutter/junixsocket), but may
 be useful sometimes.
 
-    UNSOCK_DIR=/tmp/unsockets/ LD_PRELOAD=./libunsock.so java -jar ...
+    UNSOCK_ADDR=127.0.0.1/0 UNSOCK_DIR=/tmp/unsockets/ LD_PRELOAD=./libunsock.so java -jar ...
 
 ## noVNC
 
@@ -50,7 +69,41 @@ unsock + noVNC can be used to expose a VNC server to the Web via nginx, using Un
 for all internal ports.
 
 see [doc/novnc.md](doc/novnc.md) for details.
-  
+
+# Control files
+
+unsock can also connect to other types of sockets. If the `*.sock` file in `UNSOCK_DIR` is not a
+unix domain socket but a regular file with a magic header, the contents of the file control the
+actual target of the connection. See `struct unsock_socket_info` in  `unsock.h` for details of
+the file format.
+
+Some control file configurations can be created by calling `libunsock.so` as an executable, along
+with some environment variables being set, including `UNSOCK_FILE` pointing to the control file. 
+
+## Create a control file to bind on an `AF_VSOCK` address. 
+
+Create a control file under `/tmp/unsockets/1234.sock` that points to `AF_VSOCK` port 5678 with
+CID "any" (`-1`).
+
+    UNSOCK_FILE=/tmp/unsockets/1234.sock UNSOCK_VSOCK_PORT=5678 /path/to/libunsock.so  
+ 
+The command will fail if the file already exists.
+
+## Create a control file to connect to a `VSOCK` socket via a Firecracker-style Unix domain socket
+
+The Firecracker hypervisor exposes a multiplexed Unix domain socket, over which one can connect to
+VSOCK ports in the guest system. When using `libunsock.so` with such a control file, the connection
+is transparent, so no manual `CONNECT port/OK` logic is necesssary.
+
+Create a control file under `/tmp/unsockets/1024.sock` that points to the `AF_UNIX` socket at
+`/path/to/firecracker/vsock` which is a Firecracker multiplexing server.  Connecting to
+`/tmp/unsockets/1024.sock` will actually try to connect to the guest's VSOCK port 5678.
+
+      UNSOCK_FILE=/tmp/unsockets/1024.sock UNSOCK_FC_SOCK=/path/to/firecracker/vsock UNSOCK_VSOCK_PORT=5678 /path/to/libunsock.so  
+ 
+The command will fail if the file already exists.  You should specify an absolute path for
+`UNSOCK_FC_SOCK`.  If it's a relative path, it must actually exist since it is resolved to an
+absolute path for the control file.
 
 # Debugging and Testing
  
@@ -75,13 +128,8 @@ However, it should already work for many real-world use cases. If it doesn't wor
 to [file a bug report](https://github.com/kohlschutter/unsock/issues), optionally with a pull
 request.
 
-`AF_INET6` is not supported, and attempting to use IPv6 sockets in a shimmed process results in an
-"access denied" error.
-
-Since requests to create `AF_INET` sockets are intercepted and changed to `AF_UNIX`, programs that
-still want to bind/connect to `AF_INET` sockets need to resort to receiving descriptors from another
-process (via `AF_UNIX`). Alternatively, they may use helper processes that forward the `AF_UNIX`
-sockets to `AF_INET` (e.g., *socat*).
+Only `AF_INET` is intercepted; `AF_INET6` is not intercepted. Binding on `localhost` may attempt
+binding on an IPv6 address and therefore may not give you the results you expect.
 
 Because *unsock* simply redirects libc calls, processes may technically work around the wrapper, for
 example by using `syscall(2)` or other means of invoking kernel methods directly or via a helper
@@ -91,8 +139,8 @@ Socket files are not removed upon `close(2)` (*unsock* tries to delete bound soc
 `shutdown(2)`). However, when binding, stale socket files are automatically removed to prevent an
 "address in use" error.
 
-The absolute path specified with `UNSOCK_DIR` must be of a certain maximum length, otherwise
-the process will terminate with an error message.
+The absolute path specified with `UNSOCK_DIR` must be of a certain maximum length (less than 108),
+otherwise the process will terminate with an error message.
 
 The abstract namespace for Unix domain sockets is not supported.
 
@@ -102,14 +150,24 @@ a consequence, when converting back to `struct sockaddr_in`, the IP address is h
 127.0.0.1.
 
 When using `recvfrom(2)`, data sent from other `AF_UNIX` sockets that are not under the control of
-*unsock*, is treated as if it was received from localhost, port *0*, which means that replying
-to that address is currently not possible.
+*unsock*, is treated as if it was received from `127.175.0.0` (or the configured address),
+port *0*, which means that replying to that address is currently not possible.
 
 `AF_INET`-based sockets have several socket options thay may not be supported by `AF_UNIX`.
 While *unsock* already has several checks for common options, some are still missing. Use
 the *debug* build to add some logging when debugging these cases.
 
+Currently, only little-endian architectures are tested/supported.
+
 # Changelog
+
+### _(2022-XX-XX)_ **unsock 1.1.0**
+
+ - Add support for non-`AF_UNIX` connections (via control files posing as unix domain socket files)
+ - Add support for Firecracker-style `CONNECT` proxies for `AF_VSOCK` communication.
+ - Add very basic tooling to create the corresponding control files
+ - Allow unintercepted `AF_INET`/`AF_INET6` traffic; by default, only `127.175.0.0` is intercepted.
+ - Add `UNSOCK_ADDR` environment variable to configure which IP address/address range is intercepted.
 
 ### _(2022-06-06)_ **unsock 1.0.0**
 
@@ -121,4 +179,3 @@ Copyright 2022 Christian Kohlschuetter <christian@kohlschutter.com>
 
 SPDX-License-Identifier: Apache-2.0
 See NOTICE and LICENSE for license details.
-
