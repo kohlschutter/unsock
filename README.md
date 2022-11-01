@@ -85,7 +85,7 @@ with some environment variables being set, including `UNSOCK_FILE` pointing to t
 Create a control file under `/tmp/unsockets/1234.sock` that points to `AF_VSOCK` port 5678 with
 CID "any" (`-1`).
 
-    UNSOCK_FILE=/tmp/unsockets/1234.sock UNSOCK_VSOCK_PORT=5678 /path/to/libunsock.so  
+    UNSOCK_FILE=/tmp/unsockets/1234.sock UNSOCK_VSOCK_PORT=5678 ./libunsock.so  
  
 The command will fail if the file already exists.
 
@@ -99,11 +99,33 @@ Create a control file under `/tmp/unsockets/1024.sock` that points to the `AF_UN
 `/path/to/firecracker/vsock` which is a Firecracker multiplexing server.  Connecting to
 `/tmp/unsockets/1024.sock` will actually try to connect to the guest's VSOCK port 5678.
 
-      UNSOCK_FILE=/tmp/unsockets/1024.sock UNSOCK_FC_SOCK=/path/to/firecracker/vsock UNSOCK_VSOCK_PORT=5678 /path/to/libunsock.so  
+      UNSOCK_FILE=/tmp/unsockets/1024.sock UNSOCK_FC_SOCK=/path/to/firecracker/vsock UNSOCK_VSOCK_PORT=5678 ./libunsock.so  
  
 The command will fail if the file already exists.  You should specify an absolute path for
 `UNSOCK_FC_SOCK`.  If it's a relative path, it must actually exist since it is resolved to an
 absolute path for the control file.
+
+## Create a control file to connect `TIPC` sockets
+
+TIPC knows several addressing types, but it comes down to specifying five values, address type and
+scope, and then three integer values depending on address type.
+
+unsock does not discern these values, so the naming may be a little off, but it works.
+
+To create a TIPC service address (addrtype=2; service range would be 1, and node id would be 3)
+at cluster scope (scope=2; node scope would be 3), with service type 128 (values less than 64 are
+reserved), instance ID of 99 ("lower" address) and domain of 0 (= global lookup; the "upper" address
+of a service range) accessible via `AF_INET` port 8000, run the following command:
+
+    UNSOCK_FILE=/tmp/unsockets/8000.sock UNSOCK_TIPC_ADDRTYPE=2 UNSOCK_TIPC_SCOPE=2 \
+        UNSOCK_TIPC_TYPE=128 UNSOCK_TIPC_LOWER=99 UNSOCK_TIPC_UPPER=0 ./libunsock.so
+
+To actually use TIPC, make sure the `tipc` kernel module is loaded, and you have a bearer medium
+set up, e.g.:
+
+    sudo modprobe tipc
+    sudo apk add iproute2-rdma
+    sudo tipc bearer enable media eth device eth0
 
 # Debugging and Testing
  
