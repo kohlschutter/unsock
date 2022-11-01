@@ -82,9 +82,10 @@ static int createProxyFile(char *sockFile, char *targetFile, int vsockPort) {
     return writeFile(sockFile, &si);
 }
 
-static int createVsockFile(char *sockFile, int vsockPort) {
+static int createVsockFile(char *sockFile, int vsockPort, int vsockCid) {
     fprintf(stderr, "UNSOCK_FILE: %s\n", sockFile);
     fprintf(stderr, "UNSOCK_VSOCK_PORT: %i\n", vsockPort);
+    fprintf(stderr, "UNSOCK_VSOCK_CID: %i\n", vsockCid);
 
     struct unsock_socket_info si = {0};
     si.magicHeader = UNSOCK_SOCKET_INFO_MAGIC;
@@ -93,7 +94,7 @@ static int createVsockFile(char *sockFile, int vsockPort) {
     si.destLen = sizeof(struct sockaddr_vm);
 
     si.dest.vsock.svm_family = AF_VSOCK;
-    si.dest.vsock.svm_cid = VMADDR_CID_ANY;
+    si.dest.vsock.svm_cid = vsockCid;
     si.dest.vsock.svm_port = vsockPort;
 
     return writeFile(sockFile, &si);
@@ -103,12 +104,14 @@ int unsock_main() {
     char *sockFile = getenv_unsock("UNSOCK_FILE");
     char *targetFile = getenv_unsock("UNSOCK_FC_SOCK");
     char *vsockPortStr = getenv_unsock("UNSOCK_VSOCK_PORT");
+    char *vsockCidStr = getenv_unsock("UNSOCK_VSOCK_CID");
     int vsockPort = vsockPortStr ? strtol(vsockPortStr, NULL, 10) : 0;
+    int vsockCid = vsockCidStr ? strtol(vsockCidStr, NULL, 10) : VMADDR_CID_ANY;
     if(sockFile && targetFile && vsockPort) {
         int ret = createProxyFile(sockFile, targetFile, vsockPort);
         exit(-ret);
     } else if(sockFile && vsockPort) {
-        int ret = createVsockFile(sockFile, vsockPort);
+        int ret = createVsockFile(sockFile, vsockPort, vsockCid);
         exit(-ret);
     }
 fprintf(stderr, "%s\n",

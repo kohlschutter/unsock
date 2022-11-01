@@ -70,6 +70,12 @@ for all internal ports.
 
 see [doc/novnc.md](doc/novnc.md) for details.
 
+## iperf
+
+unsock allows to run iperf over arbitrary sockets (e.g., `AF_VSOCK`), not just IP.
+
+see [doc/iperf.md](doc/iperf.md) for details.
+
 # Control files
 
 unsock can also connect to other types of sockets. If the `*.sock` file in `UNSOCK_DIR` is not a

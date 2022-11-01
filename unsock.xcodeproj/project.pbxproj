@@ -16,6 +16,7 @@
 		437CD10A284146D100AEFAD8 /* novnc.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = novnc.md; sourceTree = "<group>"; };
 		43FD6BD6290EE4620056914B /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 		43FD6BD7290FCF010056914B /* unsock.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = unsock.h; sourceTree = "<group>"; };
+		43FD6BD829117A610056914B /* iperf.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = iperf.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -46,6 +47,7 @@
 			isa = PBXGroup;
 			children = (
 				437CD10A284146D100AEFAD8 /* novnc.md */,
+				43FD6BD829117A610056914B /* iperf.md */,
 			);
 			path = doc;
 			sourceTree = "<group>";
