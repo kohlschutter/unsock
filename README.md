@@ -16,6 +16,13 @@ where *unsock* comes in:
 use `AF_INET` sockets and automatically rewrites them such that they use `AF_UNIX` sockets instead,
 without having to modify the target program's source code.
 
+Moreover, with the help of a custom control file in place of a real `AF_UNIX` domain socket,
+unsock allows communicating over all sorts of sockets, such as `AF_VSOCK` and `AF_TIPC`.
+
+Using *unsock* not only makes systems more secure (by not having to expose internal communication
+as `AF_INET` sockets), it also helps improve performance by removing inter-protocol proxies from
+the equation — programs can now talk directly to each other. 
+
 # Building and running
 
 To create the shared library `libunsock.so`, on a Linux machine just run
@@ -38,6 +45,8 @@ a bitmask of 32 is identical to omitting the bitmask. Specifying a bitmask of 0 
 addresses, whereas the IP address itself is used to flag incoming connections from other protocols:
 
 	UNSOCK_ADDR=127.0.0.1/8 UNSOCK_DIR=/tmp/unsockets/ LD_PRELOAD=./libunsock.so *some-process* *(some-args ...)*
+
+If `UNSOCK_ADDR` is omitted, only connections/binds to `127.175.0.0/32` are intercepted and converted.
 
 # Examples
 
@@ -84,7 +93,7 @@ actual target of the connection. See `struct unsock_socket_info` in  `unsock.h` 
 the file format.
 
 Some control file configurations can be created by calling `libunsock.so` as an executable, along
-with some environment variables being set, including `UNSOCK_FILE` pointing to the control file. 
+with some environment variables being set, including `UNSOCK_FILE` pointing to the control file: 
 
 ## Create a control file to bind on an `AF_VSOCK` address. 
 

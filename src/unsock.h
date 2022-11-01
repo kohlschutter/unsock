@@ -52,6 +52,7 @@ struct __attribute__((packed, aligned(4))) unsock_socket_info {
         char bytes[128];
     } dest;
 
+    // run up to four setsockopt commands by default upon connect or bind.
     unsock_param_t parameters[4];
 
     uint32_t reserved1;
