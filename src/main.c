@@ -121,7 +121,7 @@ fprintf(stderr, "%s\n",
 "       target_command := the target command you want to inject the library into\n"
 "\n"
 "Call this library as an executable to create control files:\n"
-"       UNSOCK_FILE=/path/to/proxy-file UNSOCK_FC_SOCK=/path/to/firecracker-socket UNSOCK_VSOCK_PORT=1234 /path/to/libunsock.so\n"
+"       UNSOCK_FILE=/path/to/proxy-file UNSOCK_FC_SOCK=/path/to/firecracker-vsocket UNSOCK_VSOCK_PORT=1234 /path/to/libunsock.so\n"
 "       Create a control file to simplify connecting to Firecracker Unix sockets that forward to VSOCK ports\n"
 "\n"
 "       UNSOCK_FILE=/path/to/proxy-file UNSOCK_VSOCK_PORT=1234 /path/to/libunsock.so\n"
