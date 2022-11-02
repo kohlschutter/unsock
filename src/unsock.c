@@ -134,7 +134,7 @@ static void __attribute__((constructor)) unsock_init(void) {
             char bytes[4];
         } ipaddr = {0};
 
-        char bitmask = 32;
+        signed char bitmask = 32;
         int parts;
         if((parts = sscanf(coveredAddrStr, "%hhd.%hhd.%hhd.%hhd/%hhd",
                   &ipaddr.bytes[0], &ipaddr.bytes[1], &ipaddr.bytes[2], &ipaddr.bytes[3], &bitmask)) >= 4
@@ -426,10 +426,15 @@ static int unfixAddr(int sockfd, struct sockaddr * addr,
     }
 
     if(convert) {
-        memset(buf,0, sizeof(struct sockaddr_in));
+        memset(buf, 0, sizeof(struct sockaddr_in));
         *addrlen = sizeof(struct sockaddr_in);
         buf->sa_family = AF_INET;
-        ((struct sockaddr_in *)buf)->sin_addr.s_addr = htonl(covered_addr);
+
+        struct sockaddr_in *in = (struct sockaddr_in *)buf;
+        in->sin_addr.s_addr = htonl(covered_addr);
+        if(covered_port != -1) {
+            in->sin_port = htons(covered_port);
+        }
 
         goto end;
     }
