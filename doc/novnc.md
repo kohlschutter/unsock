@@ -13,7 +13,7 @@
     UNIX domain socket `/tmp/unsockets/6080.sock`. 
 
     ```
-    UNSOCK_ADDR=127.0.0.1/0 UNSOCK_DIR=/tmp/unsockets/ LD_PRELOAD=./libunsock.so novnc_server
+    UNSOCK_ADDR=127.0.0.1/0 UNSOCK_DIR=/tmp/unsockets/ LD_PRELOAD=/usr/local/lib/libunsock.so novnc_server
     ```
 
 2. Forward novnc's connection requests to the actual VNC server

@@ -28,12 +28,20 @@ the equation — programs can now talk directly to each other.
 To create the shared library `libunsock.so`, on a Linux machine just run
 
 	make
+
+To run some tests on the created library use
+
+    make test
+
+To install the library on the system (by default to `/usr/local/lib/`) use
+
+    sudo make install
  
 To launch a target process with unsock, add *libunsock.so* to the environment variable
 *LD_PRELOAD*, and set the environment variable *UNSOCK_DIR* to the absolute path of the directory
 where unsock's `AF_UNIX` sockets are stored, for example as follows:
 
-	UNSOCK_DIR=/tmp/unsockets/ LD_PRELOAD=./libunsock.so *some-process* *(some-args ...)*
+	UNSOCK_DIR=/tmp/unsockets/ LD_PRELOAD=/usr/local/lib/libunsock.so *some-process* *(some-args ...)*
 
 This will ensure that all connections to `127.175.0.0` are intercepted and routed to unix domain
 sockets in `/tmp/unsockets`. The socket files are named `(port).socket`, e.g., `1234.socket` for
@@ -44,7 +52,7 @@ IP-address (e.g., 1.2.3.4), or an IP-range identified by a bitmask (e.g., 1.2.3.
 a bitmask of 32 is identical to omitting the bitmask. Specifying a bitmask of 0 means "all" IPv4
 addresses, whereas the IP address itself is used to flag incoming connections from other protocols:
 
-	UNSOCK_ADDR=127.0.0.1/8 UNSOCK_DIR=/tmp/unsockets/ LD_PRELOAD=./libunsock.so *some-process* *(some-args ...)*
+	UNSOCK_ADDR=127.0.0.1/8 UNSOCK_DIR=/tmp/unsockets/ LD_PRELOAD=/usr/local/lib/libunsock.so *some-process* *(some-args ...)*
 
 If `UNSOCK_ADDR` is omitted, only connections/binds to `127.175.0.0/32` are intercepted and converted.
 
@@ -54,15 +62,15 @@ If `UNSOCK_ADDR` is omitted, only connections/binds to `127.175.0.0/32` are inte
 
 Make `nc` listen on Unix domain socket /tmp/unsockets/7000.sock instead of using TCP port 7000:
 
-    UNSOCK_DIR=/tmp/unsockets/ LD_PRELOAD=./libunsock.so nc -l 127.175.0.0 7000
+    UNSOCK_DIR=/tmp/unsockets/ LD_PRELOAD=/usr/local/lib/libunsock.so nc -l 127.175.0.0 7000
 
 Listen on all IPv4 addresses; connections are coming from `127.175.0.3`:
 
-    UNSOCK_ADDR=127.175.0.3/0 UNSOCK_DIR=/tmp/unsockets/ LD_PRELOAD=./libunsock.so nc 127.0.0.1 7000
+    UNSOCK_ADDR=127.175.0.3/0 UNSOCK_DIR=/tmp/unsockets/ LD_PRELOAD=/usr/local/lib/libunsock.so nc 127.0.0.1 7000
 
 Listen on all IP addresses between 127.1.0.0 and 127.1.0.255; connection to 127.0.0.1 is via TCP:
 
-    UNSOCK_ADDR=127.1.0.3/24 UNSOCK_DIR=/tmp/unsockets/ LD_PRELOAD=./libunsock.so nc 127.0.0.1 7000
+    UNSOCK_ADDR=127.1.0.3/24 UNSOCK_DIR=/tmp/unsockets/ LD_PRELOAD=./usr/local/lib/libunsock.so nc 127.0.0.1 7000
 
 ## java
 
@@ -70,7 +78,7 @@ Make Java connect to UNIX sockets even without special support. Obviously, this 
 for proper libraries like [junixsocket](https://github.com/kohlschutter/junixsocket), but may
 be useful sometimes.
 
-    UNSOCK_ADDR=127.0.0.1/0 UNSOCK_DIR=/tmp/unsockets/ LD_PRELOAD=./libunsock.so java -jar ...
+    UNSOCK_ADDR=127.0.0.1/0 UNSOCK_DIR=/tmp/unsockets/ LD_PRELOAD=/usr/local/lib/libunsock.so java -jar ...
 
 ## noVNC
 
@@ -100,7 +108,7 @@ with some environment variables being set, including `UNSOCK_FILE` pointing to t
 Create a control file under `/tmp/unsockets/1234.sock` that points to `AF_VSOCK` port 5678 with
 CID "any" (`-1`).
 
-    UNSOCK_FILE=/tmp/unsockets/1234.sock UNSOCK_VSOCK_PORT=5678 ./libunsock.so  
+    UNSOCK_FILE=/tmp/unsockets/1234.sock UNSOCK_VSOCK_PORT=5678 /usr/local/lib/libunsock.so  
  
 The command will fail if the file already exists.
 
@@ -114,7 +122,7 @@ Create a control file under `/tmp/unsockets/1024.sock` that points to the `AF_UN
 `/path/to/firecracker/vsock` which is a Firecracker multiplexing server.  Connecting to
 `/tmp/unsockets/1024.sock` will actually try to connect to the guest's VSOCK port 5678.
 
-      UNSOCK_FILE=/tmp/unsockets/1024.sock UNSOCK_FC_SOCK=/path/to/firecracker/vsock UNSOCK_VSOCK_PORT=5678 ./libunsock.so  
+      UNSOCK_FILE=/tmp/unsockets/1024.sock UNSOCK_FC_SOCK=/path/to/firecracker/vsock UNSOCK_VSOCK_PORT=5678 /usr/local/lib/libunsock.so  
  
 The command will fail if the file already exists.  You should specify an absolute path for
 `UNSOCK_FC_SOCK`.  If it's a relative path, it must actually exist since it is resolved to an
@@ -133,7 +141,7 @@ reserved), instance ID of 99 ("lower" address) and domain of 0 (= global lookup;
 of a service range) accessible via `AF_INET` port 8000, run the following command:
 
     UNSOCK_FILE=/tmp/unsockets/8000.sock UNSOCK_TIPC_ADDRTYPE=2 UNSOCK_TIPC_SCOPE=2 \
-        UNSOCK_TIPC_TYPE=128 UNSOCK_TIPC_LOWER=99 UNSOCK_TIPC_UPPER=0 ./libunsock.so
+        UNSOCK_TIPC_TYPE=128 UNSOCK_TIPC_LOWER=99 UNSOCK_TIPC_UPPER=0 /usr/local/lib/libunsock.so
 
 To actually use TIPC, make sure the `tipc` kernel module is loaded, and you have a bearer medium
 set up, e.g.:
