@@ -103,6 +103,7 @@ static void __attribute__((constructor)) unsock_init(void) {
         fprintf(stderr, "unsock: (fatal error) UNSOCK_DIR must be an absolute path\n");
         exit(1);
     }
+    mkdir(sockDir, 0755);
 
     const int maxLen =  SUN_PATH_LEN - FILE_LENGTH_MAX;
     strncpy((char*)&addrTemplate.sun_path, sockDir, maxLen);
