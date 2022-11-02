@@ -331,7 +331,7 @@ for a specific process, without requiring additional configuration or kernel sup
 
 ## Logging
 
-Traffic could be intercepted, similar to what `socket_wrapper` does (see below).
+Traffic could be logged, similar to what `socket_wrapper` does (see below).
 
 # Similar software
 
@@ -340,6 +340,14 @@ Traffic could be intercepted, similar to what `socket_wrapper` does (see below).
 *Samba* has the [Socket Wrapper](https://git.samba.org/?p=socket_wrapper.git;a=summary), which
 serves a similar purpose. It is limited to `AF_UNIX` sockets and does not use `dup3` to exchange
 file descriptors, therefore it needs to intercept many unrelated function calls for housekeeping.
+
+## TSI: Transparent Socket Impersonation
+
+Containers [libkrun](https://github.com/containers/libkrunfw) has kernel patches that may transparently turn
+`AF_INET` sockets into `AF_VSOCK`.
+
+See patches [AF_TSI](https://github.com/containers/libkrunfw/blob/4b087ea7ac0b51516b21e6839a90a1051aec106c/patches/0010-Transparent-Socket-Impersonation-implementation.patch)
+and [tsi_hijack](https://github.com/containers/libkrunfw/blob/4b087ea7ac0b51516b21e6839a90a1051aec106c/patches/0011-tsi-allow-hijacking-sockets-tsi_hijack.patch).
 
 # Legal Notices
 
