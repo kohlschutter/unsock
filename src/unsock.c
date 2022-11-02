@@ -307,7 +307,7 @@ static int checkFixAddr(const struct sockaddr *addr, socklen_t addrlen) {
 
         uint32_t addrNative = ntohl(inAddr->sin_addr.s_addr);
 #if DEBUG
-        fprintf(stderr ,"port %i addr %p\n", inAddr->sin_port, addrNative);
+        fprintf(stderr ,"port %i addr %04x\n", inAddr->sin_port, addrNative);
         fflush(stderr);
 #endif
 
