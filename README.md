@@ -30,6 +30,11 @@ IPv4-communication only. As a bonus feature, *unsock* simplifies communication w
 
 # Building and running
 
+In order to build, you need a working C compiler (available under `cc`), Linux headers, and for
+tests an `nc` command that supports UNIX sockets. If you're on Alpine Linux, just run
+
+    ./init
+
 To create the shared library `libunsock.so`, on a Linux machine just run
 
 	make
