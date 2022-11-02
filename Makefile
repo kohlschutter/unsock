@@ -64,7 +64,7 @@ test_nc: test_prepare
 	# Test unsock with "nc", pretending to listen on TCP port 7000 (which will turn into UNIX domain socket test/7000.sock)
 	@mkdir -p test
 	@rm -f "test/7000.sock" "test/7000.txt"
-	UNSOCK_DIR="$(PWD)/test" LD_PRELOAD=./$(LIBUNSOCK).$(LIBUNSOCK_API_VER) nc -l 127.175.0.0 7000 | head -n 1 > test/7000.txt &
+	UNSOCK_DIR="$(PWD)/test" UNSOCK_BLOCK_INET6=1 UNSOCK_PORT=7000 UNSOCK_ADDR=127.0.0.1/0 LD_PRELOAD=./$(LIBUNSOCK).$(LIBUNSOCK_API_VER) nc -l -p 7000 | head -n 1 > test/7000.txt &
 	timeout 10s sh -c 'until [ -e "test/7000.sock" ]; do sleep 0.1; done'
 	echo "Hello world" | nc -U test/7000.sock
 	cat test/7000.txt | grep -q "Hello world"
