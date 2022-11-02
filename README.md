@@ -331,7 +331,7 @@ Traffic could be intercepted, similar to what `socket_wrapper` does (see below).
 ## socket_wrapper
 
 *Samba* has the [Socket Wrapper](https://git.samba.org/?p=socket_wrapper.git;a=summary), which
-servers a similar purpose. It is limited to `AF_UNIX` sockets and does not use `dup3` to exchange
+serves a similar purpose. It is limited to `AF_UNIX` sockets and does not use `dup3` to exchange
 file descriptors, therefore it needs to intercept many unrelated function calls for housekeeping.
 
 # Legal Notices
