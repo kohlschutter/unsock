@@ -29,6 +29,27 @@ IPv4-communication only. As a bonus feature, *unsock* simplifies communication w
 [Firecracker-style](https://github.com/firecracker-microvm/firecracker/blob/main/docs/vsock.md)
 multiplexing sockets.
 
+# Mode of operation
+
+Being a shared library that is inserted into a process using `LD_PRELOAD`, *unsock* intercepts
+standard C library calls like `connect`, `bind`, `accept`, etc.  The calls are analyzed and, if
+necessary, modified transparently such that the calling process does not notice (or at least only
+minimally) that an exchange took place.
+
+Since socket file descriptors are first created on a per-protocol bassis using `socket`, should
+an address family need to be changed, that socket file descriptor is _replaced_ transparently
+using a correct one. `dup3` is used to re-assign the file descriptor number on the fly, so no
+additional housekeeping is necessary.
+
+`AF_INET` socket addresses are converted to a configurable path on the file system, under which
+either `AF_UNIX` sockets reside, or special control files with instructions how to reach the desired
+socket destination (for details see below).
+
+*unsock*'s behavior can be modified using several environment parameters, which are outlined below.
+
+The shared library binary doubles as a simple configuration tool to create the special control files
+(for details see below).
+
 # Building and running
 
 In order to build, you need a working C compiler (available under `cc`), Linux headers, and for
@@ -203,7 +224,7 @@ set up, e.g.:
     sudo apk add iproute2-rdma
     sudo tipc bearer enable media eth device eth0
     
-# Fine tuning
+# Fine-tuning
 
 ## Lie to `accept`
 
@@ -265,6 +286,10 @@ When using `recvfrom(2)`, data sent from other `AF_UNIX` sockets that are not un
 While *unsock* already has several checks for common options, some are still missing. Use
 the *debug* build to add some logging when debugging these cases.
 
+In order to determine the socket file in `UNSOCK_DIR`, the address part of the `AF_INET` address
+is currently not taken into consideration (only the port number is), which may lead to unexpected
+results. Use a narrowly specified `UNSOCK_ADDR` to compensate. 
+
 Currently, only little-endian architectures are tested/supported.
 
 # Changelog
@@ -282,6 +307,32 @@ Currently, only little-endian architectures are tested/supported.
 ### _(2022-06-06)_ **unsock 1.0.0**
 
  - Initial release
+
+# Outlook
+
+## Custom socket types
+
+It would be relatively simple to intercept custom address families that are not yet supported
+in the kernel. This could accelerate development of new protocols.  
+
+## Custom proxies, routing
+
+It would be relatively simple to add code that intercepts calls to certain IP address ranges
+and employ a third-party routing software for such connections. For example, a library like
+[BoringTun](https://github.com/cloudflare/boringtun) could provide WireGuard-compatible connections
+for a specific process, without requiring additional configuration or kernel support.
+
+## Logging
+
+Traffic could be intercepted, similar to what `socket_wrapper` does (see below).
+
+# Similar software
+
+## socket_wrapper
+
+*Samba* has the [Socket Wrapper](https://git.samba.org/?p=socket_wrapper.git;a=summary), which
+servers a similar purpose. It is limited to `AF_UNIX` sockets and does not use `dup3` to exchange
+file descriptors, therefore it needs to intercept many unrelated function calls for housekeeping.
 
 # Legal Notices
 
