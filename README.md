@@ -105,7 +105,14 @@ Listen on all IPv4 addresses; connections are coming from `127.175.0.3`:
 
 Listen on all IP addresses between 127.1.0.0 and 127.1.0.255; connection to 127.0.0.1 is via TCP:
 
-    UNSOCK_ADDR=127.1.0.3/24 UNSOCK_DIR=/tmp/unsockets/ LD_PRELOAD=./usr/local/lib/libunsock.so nc 127.0.0.1 7000
+    UNSOCK_ADDR=127.1.0.3/24 UNSOCK_DIR=/tmp/unsockets/ LD_PRELOAD=/usr/local/lib/libunsock.so nc 127.0.0.1 7000
+    
+**NOTE:** busybox nc is a bit picky when accepting connections. You may need to specify
+
+	UNSOCK_BLOCK_INET6=1 UNSOCK_PORT=7000 UNSOCK_ADDR=127.0.0.1/0 UNSOCK_DIR=/tmp/unsockets/ \
+        LD_PRELOAD=/usr/local/lib/libunsock.so nc -l -p 7000
+
+to fix the bound + incoming addresses and ports.
 
 ## java
 
@@ -234,6 +241,9 @@ Socket files are not removed upon `close(2)` (*unsock* tries to delete bound soc
 
 The absolute path specified with `UNSOCK_DIR` must be of a certain maximum length (less than 108),
 otherwise the process will terminate with an error message.
+
+When the directory specified with `UNSOCK_DIR` does not exist, it is created using a mode of `0755`,
+unless umask dictates a stricter mode.
 
 The abstract namespace for Unix domain sockets is not supported.
 
