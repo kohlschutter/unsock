@@ -64,10 +64,10 @@ By default, *unsock* does not modify permissions for created socket files. Howev
 an octal value for `UNSOCK_MODE` to run *chmod* whenver an *unsock* socket file is created, e.g.:
 
     # Make available to all
-    UNSOCK_MODE=777 *(...)*
+    UNSOCK_MODE=777 (...)
     
     # Make available only to user
-    UNSOCK_MODE=700 *(...)*
+    UNSOCK_MODE=700 (...)
 
 Since you may not be able to change group ownership from any process, you can strategically move
 `UNSOCK_DIR` to a directory that has a certain group ownership and still get some security even
@@ -79,7 +79,7 @@ Some processes may try binding/connnecting via IPv6. *unsock* will not prevent t
 specify the following environment variable setting, which will block any attempts to create
 `AF_INET6` sockets:
 
-    UNSOCK_BLOCK_INET6=1 *(...)*
+    UNSOCK_BLOCK_INET6=1 (...)
 
 # Usage Examples
 
@@ -182,7 +182,7 @@ set up, e.g.:
 Some programs expect `AF_INET` socket addresses to be returned upon `accept`. Set the following
 environment variable to modify any non-`AF_INET` address to look like one:
 
-    UNSOCK_ACCEPT_CONVERT_ALL=1 *(...)*
+    UNSOCK_ACCEPT_CONVERT_ALL=1 (...)
 
 You can also selectively convert `AF_VSOCK` only (`UNSOCK_ACCEPT_CONVERT_VSOCK=1`).
 
