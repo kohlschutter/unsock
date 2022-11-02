@@ -246,6 +246,8 @@ Currently, only little-endian architectures are tested/supported.
  - Add very basic tooling to create the corresponding control files for `VSOCK` and `TIPC` sockets
  - Allow unintercepted `AF_INET`/`AF_INET6` traffic; by default, only `127.175.0.0` is intercepted.
  - Add `UNSOCK_ADDR` environment variable to configure which IP address/address range is intercepted.
+ - Add `UNSOCK_PORT`, `UNSOCK_MODE`, `UNSOCK_BLOCK_INET6`.
+ - Update build scripts, examples
 
 ### _(2022-06-06)_ **unsock 1.0.0**
 
