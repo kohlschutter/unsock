@@ -21,7 +21,12 @@ unsock allows communicating over all sorts of sockets, such as `AF_VSOCK` and `A
 
 Using *unsock* not only makes systems more secure (by not having to expose internal communication
 as `AF_INET` sockets), it also helps improve performance by removing inter-protocol proxies from
-the equation — programs can now talk directly to each other. 
+the equation — programs can now talk directly to each other.
+
+*unsock* specifically also simplifies communication between a virtual machine and its host, by
+allowing communication to go through `AF_VSOCK` sockets even if the programs were designed for
+IPv4-communication only. As a bonus feature, *unsock* simplifies communication with
+[Firecracker-style](https://github.com/firecracker-microvm/firecracker) multiplexing sockets.
 
 # Building and running
 
@@ -118,7 +123,7 @@ unsock allows to run iperf over arbitrary sockets (e.g., `AF_VSOCK`), not just I
 
 see [doc/iperf.md](doc/iperf.md) for details.
 
-# Control files, other socket domains
+# Control files, other socket domains like `AF_VSOCK` and `AF_TIPC`.
 
 unsock can also connect to other types of sockets. If the `*.sock` file in `UNSOCK_DIR` is not a
 unix domain socket but a regular file with a magic header, the contents of the file control the
