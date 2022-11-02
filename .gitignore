@@ -4,6 +4,7 @@
 .*.swp
 hs_err_pid*.log
 *.so
+*.so.*
 **/xcuserdata
 /test
 /test-ld
