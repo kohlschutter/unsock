@@ -26,7 +26,8 @@ the equation — programs can now talk directly to each other.
 *unsock* specifically also simplifies communication between a virtual machine and its host, by
 allowing communication to go through `AF_VSOCK` sockets even if the programs were designed for
 IPv4-communication only. As a bonus feature, *unsock* simplifies communication with
-[Firecracker-style](https://github.com/firecracker-microvm/firecracker) multiplexing sockets.
+[Firecracker-style](https://github.com/firecracker-microvm/firecracker/blob/main/docs/vsock.md)
+multiplexing sockets.
 
 # Building and running
 
