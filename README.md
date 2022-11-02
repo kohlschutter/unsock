@@ -118,12 +118,12 @@ unsock allows to run iperf over arbitrary sockets (e.g., `AF_VSOCK`), not just I
 
 see [doc/iperf.md](doc/iperf.md) for details.
 
-# Control files
+# Control files, other socket domains
 
 unsock can also connect to other types of sockets. If the `*.sock` file in `UNSOCK_DIR` is not a
 unix domain socket but a regular file with a magic header, the contents of the file control the
-actual target of the connection. See `struct unsock_socket_info` in  `unsock.h` for details of
-the file format.
+actual target of the connection.  See `struct unsock_socket_info` in [unsock.h](src/unsock.h) for
+details of the file format.
 
 Some control file configurations can be created by calling `libunsock.so` as an executable, along
 with some environment variables being set, including `UNSOCK_FILE` pointing to the control file: 
@@ -147,7 +147,8 @@ Create a control file under `/tmp/unsockets/1024.sock` that points to the `AF_UN
 `/path/to/firecracker/vsock` which is a Firecracker multiplexing server.  Connecting to
 `/tmp/unsockets/1024.sock` will actually try to connect to the guest's VSOCK port 5678.
 
-      UNSOCK_FILE=/tmp/unsockets/1024.sock UNSOCK_FC_SOCK=/path/to/firecracker/vsock UNSOCK_VSOCK_PORT=5678 /usr/local/lib/libunsock.so  
+      UNSOCK_FILE=/tmp/unsockets/1024.sock UNSOCK_FC_SOCK=/path/to/firecracker/vsock \
+          UNSOCK_VSOCK_PORT=5678 /usr/local/lib/libunsock.so  
  
 The command will fail if the file already exists.  You should specify an absolute path for
 `UNSOCK_FC_SOCK`.  If it's a relative path, it must actually exist since it is resolved to an
@@ -210,7 +211,8 @@ to [file a bug report](https://github.com/kohlschutter/unsock/issues), optionall
 request.
 
 Only `AF_INET` is intercepted; `AF_INET6` is not intercepted. Binding on `localhost` may attempt
-binding on an IPv6 address and therefore may not give you the results you expect.
+binding on an IPv6 address and therefore may not give you the results you expect. You can block
+`AF_INET6` by specifying `UNSOCK_BLOCK_INET6=1`.
 
 Because *unsock* simply redirects libc calls, processes may technically work around the wrapper, for
 example by using `syscall(2)` or other means of invoking kernel methods directly or via a helper
@@ -225,14 +227,9 @@ otherwise the process will terminate with an error message.
 
 The abstract namespace for Unix domain sockets is not supported.
 
-The 32-bit host address of a `struct sockaddr_in` is currently not checked; this enables
-binding to any IP address at the cost of increasing the chance of port number collisions. As
-a consequence, when converting back to `struct sockaddr_in`, the IP address is hardcoded to
-127.0.0.1.
-
 When using `recvfrom(2)`, data sent from other `AF_UNIX` sockets that are not under the control of
-*unsock*, is treated as if it was received from `127.175.0.0` (or the configured address),
-port *0*, which means that replying to that address is currently not possible.
+*unsock*, is treated as if it was received from `127.175.0.0` (or the address configured with
+`UNSOCK_ADDR`), port *0*, which means that replying to that address is currently not possible.
 
 `AF_INET`-based sockets have several socket options thay may not be supported by `AF_UNIX`.
 While *unsock* already has several checks for common options, some are still missing. Use
