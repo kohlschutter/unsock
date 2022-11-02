@@ -2,39 +2,42 @@
 
 ## noVNC
 
-0. Launch your local VNC server (e.g., `qemu-system-x86_64`)
+[noVNC](https://novnc.com/) is a program that allows running a VNC connection in the browser.
+Even though it's [not supported out of the box](https://github.com/novnc/noVNC/issues/1340): 
+thanks to *unsock*, novnc_server can now serve HTTP via Unix domain sockets (so you don't have to
+expose it via TCP, and instead hide it behind some other server like nginx).   
+
+1. Launch your local VNC server (e.g., `qemu-system-x86_64`)
 
     We assume that the server is reachable at localhost:5900 (bonus points if exposed as a
     Unix socket instead, see below)
 
-1. Launch novnc_server with unsock
+2. Launch novnc_server with unsock
 
     noVNC will launch a webserver on TCP port 6080, but unsock redirects this to
     UNIX domain socket `/tmp/unsockets/6080.sock`. 
 
     ```
-    UNSOCK_ADDR=127.0.0.1/0 UNSOCK_DIR=/tmp/unsockets/ LD_PRELOAD=/usr/local/lib/libunsock.so novnc_server
+    UNSOCK_MODE=777 UNSOCK_PORT=6080 UNSOCK_ADDR=127.0.0.1/0 UNSOCK_DIR=/tmp/unsockets/ \
+        LD_PRELOAD=/usr/local/lib/libunsock.so novnc_server
     ```
 
-2. Forward novnc's connection requests to the actual VNC server
+    By specifying `UNSOCK_PORT`, we allow connections on any other port to keep working via TCP.
 
-    After connecting to noVNC's webserver, it will attempt to connect to the original VNC
-    server at TCP port 5900. However, unsock rewrote that request to connect to 
-    /tmp/unsockets/5900.sock instead. Thus, we have to forward requests to the actual port
-    using another process, e.g., as follows:
-
-    ```
-    socat UNIX-LISTEN:/tmp/unsockets/5900.sock,fork TCP-CONNECT:localhost:5900
-    ```
+    This is important for *novnc_server*, since it currently won't allow binding on a specific IP
+    address, and we still need to be able to connect to our VNC server at localhost:5900.
     
     Alternatively, consider launching the original VNC server as a UNIX socket at
     `/tmp/unsockets/5900.sock`. QEMU for example supports that by specifying
-    `-vnc unix:/tmp/unsockets/5900.sock`.
+    `-vnc unix:/tmp/unsockets/5900.sock`. Then you can omit `UNSOCK_PORT`, which instructs *unsock*
+    to map all ports, including 6080 and 5900.
 
-3. Add proxy rules to your nginx server config, similar to this:
+    **NOTE:** `UNSOCK_MODE=777` makes sure `/tmp/unsockets/6080.sock` is accessible from your nginx
+    process without extra steps.  However, you're encouraged to properly secure your system, for
+    example by using an `UNSOCK_DIR` with permissions for both *novnc_server* and *nginx* but noone
+    else.
 
-    Finally, we can expose noVNC's webserver via nginx (for example, to serve it over
-    a secured and authorized channel only).
+3. Add proxy rules to your nginx server config, similar to this, then restart nginx:
 
     ```
     server {
@@ -54,3 +57,14 @@
         server unix:///tmp/unsockets/6080.sock;
     }
     ```
+
+    You can now access the VNC server via `http://your-nginx-server/vnc.html`.
+
+    If you want to use a subdirectory location for the proxy (e.g., `/vnc/`), change `location` to
+
+	    location ~ ^/novnc/(.*)$ {
+
+    and open `vnc.html` with an additional parameter pointing to the correct websockify URL, like
+    so:
+
+        http://your-nginx-server/novnc/vnc.html?path=/novnc/websockify

@@ -56,8 +56,14 @@ static _Thread_local unsigned int seed;
 static bool accept_convert_all = false;
 static bool accept_convert_vsock = false;
 
+static bool block_inet6 = false;
+
 static in_addr_t covered_addr = 0x7faf0000;
 static int covered_bitmask = 32;
+
+static int32_t covered_port = -1; // -1 means "any"
+
+static int32_t set_mode = -1; // -1 means "don't"
 
 static bool checkEnvBool(char *key) {
     char *val = getenv(key);
@@ -73,7 +79,10 @@ CK_VISIBILITY_INTERNAL char* getenv_unsock(char *key) {
     }
 }
 
-static bool is_addr_covered(in_addr_t addr) {
+static bool is_addr_covered(in_addr_t addr, in_port_t port) {
+    if(covered_port != -1 && port != covered_port) {
+        return false;
+    }
     if(covered_bitmask == 0) {
         return true;
     } else if (covered_bitmask == 32) {
@@ -141,12 +150,39 @@ static void __attribute__((constructor)) unsock_init(void) {
         }
     }
 
+    char *coveredPortStr = getenv_unsock("UNSOCK_PORT");
+    if(coveredPortStr) {
+        int32_t port;
+        if(sscanf(coveredPortStr, "%d", &port) == 1 && port >= -1 && port < 65536) {
+            covered_port = port;
+        } else {
+            fprintf(stderr, "unsock: Cannot parse UNSOCK_PORT: %s\n", coveredPortStr);
+        }
+    }
+
+    char *setModeStr = getenv_unsock("UNSOCK_MODE");
+    if(setModeStr) {
+        int32_t mode;
+        if(sscanf(setModeStr, "%o", &mode) == 1 && mode >= 0 && mode < 01000) {
+            set_mode = mode;
+        } else {
+            fprintf(stderr, "unsock: Cannot parse UNSOCK_MODE: %s\n", setModeStr);
+        }
+    }
+
     accept_convert_all = checkEnvBool("UNSOCK_ACCEPT_CONVERT_ALL");
     accept_convert_vsock = checkEnvBool("UNSOCK_ACCEPT_CONVERT_VSOCK");
+
+    block_inet6 = checkEnvBool("UNSOCK_BLOCK_INET6");
 }
 
 int CK_VISIBILITY_DEFAULT socket(int domain, int type, int protocol) {
     if(unsock_socket == NULL) {
+        errno = EAFNOSUPPORT;
+        return -1;
+    }
+
+    if(domain == AF_INET6 && block_inet6) {
         errno = EAFNOSUPPORT;
         return -1;
     }
@@ -306,12 +342,14 @@ static int checkFixAddr(const struct sockaddr *addr, socklen_t addrlen) {
         struct sockaddr_in *inAddr = (struct sockaddr_in *)addr;
 
         uint32_t addrNative = ntohl(inAddr->sin_addr.s_addr);
+        in_port_t portNative = ntohs(inAddr->sin_port);
+
 #if DEBUG
-        fprintf(stderr ,"port %i addr %04x\n", inAddr->sin_port, addrNative);
+        fprintf(stderr ,"port %i addr %08x\n", portNative, addrNative);
         fflush(stderr);
 #endif
 
-        return is_addr_covered(addrNative) ? 0 : 1;
+        return is_addr_covered(addrNative, portNative) ? 0 : 1;
     }
     return 1;
 }
@@ -506,7 +544,7 @@ static int better_bind(int sockfd, const struct sockaddr *addr, socklen_t addrle
                 ret = unsock_bind(sockfd, addr, addrlen);
                 if(ret == 0) {
                     close(fd);
-                    return 0;
+                    goto success;
                 }
             }
             close(fd);
@@ -514,7 +552,16 @@ static int better_bind(int sockfd, const struct sockaddr *addr, socklen_t addrle
             errno = EADDRINUSE;
         }
     }
+    if(ret == 0) {
+        goto success;
+    }
     return ret;
+success:
+    struct sockaddr_un *addr_un = (struct sockaddr_un *)addr;
+    if(set_mode != -1 && addr->sa_family == AF_UNIX && isUnsockAddress(addr_un)) {
+        chmod(addr_un->sun_path, set_mode);
+    }
+    return 0;
 }
 
 static int bindRandomPort(int sockfd, struct sockaddr_in *addr, socklen_t addrlen) {
