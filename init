@@ -1,0 +1,6 @@
+#!/bin/sh
+
+# Install dependencies
+if [[ -n $(which apk) ]]; then
+    sudo apk add alpine-sdk linux-headers netcat-openbsd
+fi
