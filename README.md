@@ -131,9 +131,18 @@ see [doc/novnc.md](doc/novnc.md) for details.
 
 ## iperf
 
-unsock allows to run iperf over arbitrary sockets (e.g., `AF_VSOCK`), not just IP.
+unsock allows to run iperf over arbitrary sockets (e.g., `AF_UNIX`, `AF_VSOCK` and `AF_TIPC`), not
+just IP.
 
 see [doc/iperf.md](doc/iperf.md) for details.
+
+## Python HTTP server
+
+unsock allows to run the HTTP server over arbitrary sockets (e.g., `AF_UNIX`, `AF_VSOCK` and
+`AF_TIPC`), not just IP.
+
+see [doc/python-http.md](doc/python-http.md) for details.
+
 
 # Control files, other socket domains like `AF_VSOCK` and `AF_TIPC`.
 

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXFileReference section */
+		436500002912D7D500298582 /* python-http.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = "python-http.md"; sourceTree = "<group>"; };
 		437CD102283FD56C00AEFAD8 /* ckmacros.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ckmacros.h; sourceTree = "<group>"; };
 		437CD103283FD56C00AEFAD8 /* unsock.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = unsock.c; sourceTree = "<group>"; };
 		437CD104283FD56C00AEFAD8 /* main.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = main.c; sourceTree = "<group>"; };
@@ -48,6 +49,7 @@
 			children = (
 				437CD10A284146D100AEFAD8 /* novnc.md */,
 				43FD6BD829117A610056914B /* iperf.md */,
+				436500002912D7D500298582 /* python-http.md */,
 			);
 			path = doc;
 			sourceTree = "<group>";
