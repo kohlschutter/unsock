@@ -56,6 +56,7 @@ static _Thread_local unsigned int seed;
 static bool accept_convert_all = false;
 static bool accept_convert_vsock = false;
 
+static bool block_inet = false;
 static bool block_inet6 = false;
 
 static in_addr_t covered_addr = 0x7faf0000;
@@ -138,7 +139,7 @@ static void __attribute__((constructor)) unsock_init(void) {
         signed char bitmask = 32;
         int parts;
         if((parts = sscanf(coveredAddrStr, "%hhd.%hhd.%hhd.%hhd/%hhd",
-                  &ipaddr.bytes[0], &ipaddr.bytes[1], &ipaddr.bytes[2], &ipaddr.bytes[3], &bitmask)) >= 4
+                           &ipaddr.bytes[0], &ipaddr.bytes[1], &ipaddr.bytes[2], &ipaddr.bytes[3], &bitmask)) >= 4
            && (parts == 4 || (bitmask >= 0 && bitmask <= 32))) {
             covered_addr = ntohl(ipaddr.addr);
             if(parts == 5) {
@@ -174,6 +175,7 @@ static void __attribute__((constructor)) unsock_init(void) {
     accept_convert_all = checkEnvBool("UNSOCK_ACCEPT_CONVERT_ALL");
     accept_convert_vsock = checkEnvBool("UNSOCK_ACCEPT_CONVERT_VSOCK");
 
+    block_inet = checkEnvBool("UNSOCK_BLOCK_INET");
     block_inet6 = checkEnvBool("UNSOCK_BLOCK_INET6");
 }
 
@@ -386,6 +388,9 @@ static int fixAddr(int sockfd, const struct sockaddr *addr, socklen_t addrlen,
             errno = EACCES;
             return -1;
         }
+    } else if(block_inet && addr->sa_family == AF_INET) {
+        errno = EACCES;
+        return -1;
     } else {
         return fun == NULL ? 0 : fun(sockfd, addr, addrlen);
     }

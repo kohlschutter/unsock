@@ -113,6 +113,13 @@ specify the following environment variable setting, which will block any attempt
 
     UNSOCK_BLOCK_INET6=1 (...)
 
+## Disabling unintercepted `AF_INET`
+
+You can also prevent unintercepted `AF_INET` connections (those that are not translated via
+`unsock`), by specifying the following environment variable:
+
+    UNSOCK_BLOCK_INET=1 (...)
+
 # Usage Examples
 
 ## nc
@@ -301,7 +308,7 @@ Currently, only little-endian architectures are tested/supported.
  - Add very basic tooling to create the corresponding control files for `VSOCK` and `TIPC` sockets
  - Allow unintercepted `AF_INET`/`AF_INET6` traffic; by default, only `127.175.0.0` is intercepted.
  - Add `UNSOCK_ADDR` environment variable to configure which IP address/address range is intercepted.
- - Add `UNSOCK_PORT`, `UNSOCK_MODE`, `UNSOCK_BLOCK_INET6`.
+ - Add `UNSOCK_PORT`, `UNSOCK_MODE`, `UNSOCK_BLOCK_INET6`, `UNSOCK_BLOCK_INET`.
  - Update build scripts, examples
 
 ### _(2022-06-06)_ **unsock 1.0.0**
