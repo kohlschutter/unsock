@@ -66,14 +66,14 @@ test_nc: test_prepare
 	@rm -f "test/7000.sock" "test/7000.txt"
 	UNSOCK_DIR="$(PWD)/test" UNSOCK_BLOCK_INET6=1 UNSOCK_PORT=7000 UNSOCK_ADDR=127.0.0.1/0 LD_PRELOAD=./$(LIBUNSOCK).$(LIBUNSOCK_API_VER) nc -l -p 7000 | head -n 1 > test/7000.txt &
 	timeout 10s sh -c 'until [ -e "test/7000.sock" ]; do sleep 0.1; done'
-	echo "Hello world" | nc -U test/7000.sock
+	echo "Hello world" | ( nc -U test/7000.sock || nc local:test/7000.sock )
 	cat test/7000.txt | grep -q "Hello world"
 
 test_bind0: test_prepare
 	# Test binding on port 0 (random/anonymous port)
 	@rm -rf test/zero
 	@mkdir -p test/zero
-	( UNSOCK_DIR="$(PWD)/test/zero" LD_PRELOAD=./$(LIBUNSOCK).$(LIBUNSOCK_API_VER) timeout 1 nc -l 127.175.0.0 0 ) || true
+	( UNSOCK_DIR="$(PWD)/test/zero" UNSOCK_BLOCK_INET6=1 UNSOCK_ADDR=127.0.0.1/0 LD_PRELOAD=./$(LIBUNSOCK).$(LIBUNSOCK_API_VER) timeout 1 nc -l -p 0 ) || true
 	[ `ls test/zero/*sock | grep -c ".sock"` -eq 1 ]
 
 .PHONY: test_prepare
