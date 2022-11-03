@@ -32,13 +32,13 @@ multiplexing sockets.
 # Mode of operation
 
 Being a shared library that is inserted into a process using `LD_PRELOAD`, *unsock* intercepts
-standard C library calls like `connect`, `bind`, `accept`, etc.  The calls are analyzed and, if
-necessary, modified transparently such that the calling process does not notice (or at least only
-minimally) that an exchange took place.
+standard C library calls like `connect(2)`, `bind(2)`, `accept(2)`, etc.  The calls are analyzed
+and, if necessary, modified transparently such that the calling process does not notice (or at least
+only minimally) that an exchange took place.
 
-Since socket file descriptors are first created on a per-protocol bassis using `socket`, should
-an address family need to be changed, that socket file descriptor is _replaced_ transparently
-using a correct one. `dup3` is used to re-assign the file descriptor number on the fly, so no
+Since socket file descriptors are first created on a per-protocol bassis using `socket(2)`, should
+an address family need to be changed, that socket file descriptor is _replaced_ transparently using
+a correct one.  `dup3(2)` is used to re-assign the file descriptor number on the fly, so no
 additional housekeeping is necessary.
 
 `AF_INET` socket addresses are converted to a configurable path on the file system, under which
@@ -84,7 +84,7 @@ IP-address (e.g., 1.2.3.4), or an IP-range identified by a bitmask (e.g., 1.2.3.
 a bitmask of 32 is identical to omitting the bitmask. Specifying a bitmask of 0 means "all" IPv4
 addresses, whereas the IP address itself is used to flag incoming connections from other protocols:
 
-	UNSOCK_ADDR=127.0.0.1/8 UNSOCK_DIR=/tmp/unsockets/ LD_PRELOAD=/usr/local/lib/libunsock.so *some-process* *(some-args ...)*
+	UNSOCK_ADDR=127.0.0.1/8 UNSOCK_DIR=/tmp/unsockets/ LD_PRELOAD=/usr/local/lib/libunsock.so some-process some-args ...
 
 If `UNSOCK_ADDR` is omitted, only connections/binds to `127.175.0.0/32` are intercepted and converted.
 
@@ -301,7 +301,7 @@ Currently, only little-endian architectures are tested/supported.
 
 # Changelog
 
-### _(2022-XX-XX)_ **unsock 1.1.0**
+### _(2022-11-03)_ **unsock 1.1.0**
 
  - Add support for non-`AF_UNIX` connections (via control files posing as unix domain socket files)
  - Add support for Firecracker-style `CONNECT` proxies for `AF_VSOCK` communication.
@@ -333,7 +333,7 @@ for a specific process, without requiring additional configuration or kernel sup
 
 Traffic could be logged, similar to what `socket_wrapper` does (see below).
 
-# Similar software
+# Related software
 
 ## socket_wrapper
 
@@ -354,4 +354,5 @@ and [tsi_hijack](https://github.com/containers/libkrunfw/blob/4b087ea7ac0b51516b
 Copyright 2022 Christian Kohlschuetter <christian@kohlschutter.com>
 
 SPDX-License-Identifier: Apache-2.0
+
 See NOTICE and LICENSE for license details.
