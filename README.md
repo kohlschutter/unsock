@@ -349,6 +349,14 @@ Containers [libkrun](https://github.com/containers/libkrunfw) has kernel patches
 See patches [AF_TSI](https://github.com/containers/libkrunfw/blob/4b087ea7ac0b51516b21e6839a90a1051aec106c/patches/0010-Transparent-Socket-Impersonation-implementation.patch)
 and [tsi_hijack](https://github.com/containers/libkrunfw/blob/4b087ea7ac0b51516b21e6839a90a1051aec106c/patches/0011-tsi-allow-hijacking-sockets-tsi_hijack.patch).
 
+## junixsocket
+
+A Java/JNI library that allows the use of Unix domain sockets (`AF_UNIX`) and others like `AF_TIPC`
+and `AF_VSOCK`, from Java and other JVM languages. Works with GraalVM, too. 
+
+[junixsocket on GitHub](https://github.com/kohlschutter/junixsocket);
+[junixsocket project website](https://kohlschutter.github.io/junixsocket/)
+
 # Legal Notices
 
 Copyright 2022 Christian Kohlschuetter <christian@kohlschutter.com>
