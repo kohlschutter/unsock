@@ -2,6 +2,20 @@
 
 ## iperf
 
+### iperf via `AF_UNIX`
+
+Run the server as follows:
+
+    UNSOCK_DIR=/tmp/unsockets/ UNSOCK_ADDR=127.0.0.1/0 UNSOCK_ACCEPT_CONVERT_ALL=1 \
+         UNSOCK_BLOCK_INET6=1 LD_PRELOAD=/usr/local/lib/libunsock.so \
+         iperf -s -i 1
+
+Run the client as follows:
+
+    UNSOCK_DIR=/tmp/unsockets/ UNSOCK_ADDR=127.0.0.1/0 UNSOCK_ACCEPT_CONVERT_ALL=1 \
+         LD_PRELOAD=/usr/local/lib/libunsock.so \
+         iperf -c 127.0.0.1 -i 1
+
 ### iperf via `AF_VSOCK` between a Firecracker hypervisor and its guest, server running in guest
 
 On the guest, run the following command to create a direct `AF_VSOCK` control file:
