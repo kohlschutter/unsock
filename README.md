@@ -90,6 +90,16 @@ If `UNSOCK_ADDR` is omitted, only connections/binds to `127.175.0.0/32` are inte
 
 # Security and permissions
 
+## Choosing a directory for `UNSOCK_DIR`
+
+In the examples, for simplicity, we use `/tmp/unsockets` for `UNSOCK_DIR`.
+
+Note that you should use a different directory in production, preferably one that has read/write
+permissions restricted to the user/group that uses the socket.
+
+You also don't necessarily need one directory; you can have separate directories for different
+processes.
+
 ## Socket file permissions
 
 By default, *unsock* does not modify permissions for created socket files. However, you may specify
@@ -277,7 +287,7 @@ Socket files are not removed upon `close(2)` (*unsock* tries to delete bound soc
 `shutdown(2)`). However, when binding, stale socket files are automatically removed to prevent an
 "address in use" error.
 
-The absolute path specified with `UNSOCK_DIR` must be of a certain maximum length (less than 108),
+The absolute path specified with `UNSOCK_DIR` must be of a certain maximum length (less than 96),
 otherwise the process will terminate with an error message.
 
 When the directory specified with `UNSOCK_DIR` does not exist, it is created using a mode of `0755`,
@@ -341,10 +351,16 @@ Traffic could be logged, similar to what `socket_wrapper` does (see below).
 serves a similar purpose. It is limited to `AF_UNIX` sockets and does not use `dup3` to exchange
 file descriptors, therefore it needs to intercept many unrelated function calls for housekeeping.
 
+## ip2unix
+
+[ip2unix](https://github.com/nixcloud/ip2unix) converts IPv4 and IPv6 sockets to AF_UNIX, on a
+per-rule basis.  An internal mapping (instead of using dup3) is maintained.  Also has some systemd
+integration for IP-based socket activation.
+
 ## TSI: Transparent Socket Impersonation
 
-Containers [libkrun](https://github.com/containers/libkrunfw) has kernel patches that may transparently turn
-`AF_INET` sockets into `AF_VSOCK`.
+Containers [libkrun](https://github.com/containers/libkrunfw) has kernel patches that may
+transparently turn `AF_INET` sockets into `AF_VSOCK`.
 
 See patches [AF_TSI](https://github.com/containers/libkrunfw/blob/4b087ea7ac0b51516b21e6839a90a1051aec106c/patches/0010-Transparent-Socket-Impersonation-implementation.patch)
 and [tsi_hijack](https://github.com/containers/libkrunfw/blob/4b087ea7ac0b51516b21e6839a90a1051aec106c/patches/0011-tsi-allow-hijacking-sockets-tsi_hijack.patch).
